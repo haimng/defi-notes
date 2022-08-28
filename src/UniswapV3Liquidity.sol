@@ -21,6 +21,7 @@ contract UniswapV3Liquidity is IERC721Receiver {
 
     int24 private constant MIN_TICK = -887272;
     int24 private constant MAX_TICK = -MIN_TICK;
+    int24 private constant TICK_SPACING = 60;
 
     INonfungiblePositionManager public nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
@@ -48,8 +49,8 @@ contract UniswapV3Liquidity is IERC721Receiver {
                 // By using TickMath.MIN_TICK and TickMath.MAX_TICK, 
                 // we are providing liquidity across the whole range of the pool. 
                 // Not recommended in production.
-                tickLower: (MIN_TICK / 60) * 60,
-                tickUpper: (MAX_TICK / 60) * 60,
+                tickLower: (MIN_TICK / TICK_SPACING) * TICK_SPACING,
+                tickUpper: (MAX_TICK / TICK_SPACING) * TICK_SPACING,
                 amount0Desired: amount0ToAdd,
                 amount1Desired: amount1ToAdd,
                 amount0Min: 0,
