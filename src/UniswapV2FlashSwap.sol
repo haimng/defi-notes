@@ -26,7 +26,7 @@ contract UniswapV2FlashSwap is IUniswapV2Callee {
     IUniswapV2Pair private immutable pair;
 
     // For this example, store the amount to repay
-    uint public amountToRepay;
+    uint256 public amountToRepay;
 
     constructor() {
         pair = IUniswapV2Pair(factory.getPair(DAI, WETH));
