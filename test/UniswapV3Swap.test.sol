@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/UniswapV3SwapExamples.sol";
+import "../src/UniswapV3Swap.sol";
 
 address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -15,7 +15,7 @@ contract UniV3Test is Test {
     IERC20 private dai = IERC20(DAI);
     IERC20 private usdc = IERC20(USDC);
 
-    UniswapV3SwapExamples private uni = new UniswapV3SwapExamples();
+    UniswapV3Swap private uni = new UniswapV3Swap();
 
     function setUp() public {
     }

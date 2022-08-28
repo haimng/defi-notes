@@ -15,7 +15,7 @@ interface IERC721Receiver {
         returns (bytes4);
 }
 
-contract UniswapV3LiquidityExamples is IERC721Receiver {
+contract UniswapV3Liquidity is IERC721Receiver {
     IERC20 private constant dai = IERC20(DAI);
     IWETH private constant weth = IWETH(WETH);
 
