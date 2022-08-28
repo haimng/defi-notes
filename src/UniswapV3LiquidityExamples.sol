@@ -48,8 +48,8 @@ contract UniswapV3LiquidityExamples is IERC721Receiver {
                 // By using TickMath.MIN_TICK and TickMath.MAX_TICK, 
                 // we are providing liquidity across the whole range of the pool. 
                 // Not recommended in production.
-                tickLower: MIN_TICK,
-                tickUpper: MAX_TICK,
+                tickLower: (MIN_TICK / 60) * 60,
+                tickUpper: (MAX_TICK / 60) * 60,
                 amount0Desired: amount0ToAdd,
                 amount1Desired: amount1ToAdd,
                 amount0Min: 0,
@@ -70,7 +70,7 @@ contract UniswapV3LiquidityExamples is IERC721Receiver {
             weth.approve(address(nonfungiblePositionManager), 0);
             uint256 refund1 = amount1ToAdd - amount1;
             weth.transfer(msg.sender, refund1);
-        } // Remove allowance and refund in both assets.
+        }
     }
 
     function onERC721Received(
