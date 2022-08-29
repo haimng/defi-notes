@@ -40,4 +40,8 @@ contract UniswapV3LiquidityTest is Test {
         console.log("amount 0", amount0);
         console.log("amount 1", amount1);
     }
+
+
+    // TODO: collect fees + increase liquidity
+    // TODO: withdraw all + collect fees
 }
