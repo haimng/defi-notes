@@ -130,6 +130,23 @@ contract UniswapV3Liquidity is IERC721Receiver {
         (liquidity, amount0, amount1) =
             nonfungiblePositionManager.increaseLiquidity(params);
     }
+
+    function decreaseLiquidityCurrentRange(uint256 tokenId, uint128 liquidity)
+        external
+        returns (uint256 amount0, uint256 amount1)
+    {
+        INonfungiblePositionManager.DecreaseLiquidityParams memory params =
+        INonfungiblePositionManager.DecreaseLiquidityParams({
+                tokenId: tokenId,
+                liquidity: liquidity,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            });
+
+        (amount0, amount1) =
+            nonfungiblePositionManager.decreaseLiquidity(params);
+    }
 }
 
 interface INonfungiblePositionManager {

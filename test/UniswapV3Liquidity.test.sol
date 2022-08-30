@@ -14,34 +14,60 @@ contract UniswapV3LiquidityTest is Test {
 
     UniswapV3Liquidity private uni = new UniswapV3Liquidity();
 
-    uint constant private DAI_AMOUNT = 1e18;
-    uint constant private WETH_AMOUNT = 1e18;
-
     function setUp() public {
         vm.prank(DAI_WHALE);
-        dai.transfer(address(this), DAI_AMOUNT);
+        dai.transfer(address(this), 20 * 1e18);
 
-        weth.deposit{value: WETH_AMOUNT}();
+        weth.deposit{value: 2 * 1e18}();
+
+        dai.approve(address(uni), 20 * 1e18);
+        weth.approve(address(uni), 2 * 1e18);
     }
 
-    function testMintNewPosition() public {
-        dai.approve(address(uni), DAI_AMOUNT);
-        weth.approve(address(uni), WETH_AMOUNT);
+    function testLiquidity() public {
+        // Track total liquidity 
+        uint128 liquidity;
 
-        (uint tokenId, uint liquidity, uint amount0, uint amount1) = uni.mintNewPosition(
-            DAI_AMOUNT, WETH_AMOUNT
+        // Mint new position
+        uint daiAmount = 10 * 1e18;
+        uint wethAmount = 1e18;
+
+        (uint tokenId, uint128 liquidityDelta, uint amount0, uint amount1) = uni.mintNewPosition(
+            daiAmount, wethAmount
         );
+        liquidity += liquidityDelta;
 
-        console.log("DAI", dai.balanceOf(address(uni)));
-        console.log("weth", weth.balanceOf(address(uni)));
-
+        console.log("--- Mint new position ---");
         console.log("token id", tokenId);
         console.log("liquidity", liquidity);
         console.log("amount 0", amount0);
         console.log("amount 1", amount1);
+
+        // Collect fees
+        (uint fee0, uint fee1) = uni.collectAllFees(tokenId);
+
+        console.log("--- Collect fees ---");
+        console.log("fee 0", fee0);
+        console.log("fee 1", fee1);
+
+        // Increase liquidity
+        uint daiAmountToAdd = 5 * 1e18;
+        uint wethAmountToAdd = 0.5 * 1e18;
+
+        (liquidityDelta, amount0, amount1) = uni.increaseLiquidityCurrentRange(
+            tokenId, daiAmountToAdd, wethAmountToAdd
+        );
+        liquidity += liquidityDelta;
+
+        console.log("--- Increase liquidity ---");
+        console.log("liquidity", liquidity);
+        console.log("amount 0", amount0);
+        console.log("amount 1", amount1);
+
+        // Decrease liquidity
+        (amount0, amount1) = uni.decreaseLiquidityCurrentRange(tokenId, liquidity);
+        console.log("--- Decrease liquidity ---");
+        console.log("amount 0", amount0);
+        console.log("amount 1", amount1);
     }
-
-
-    // TODO: collect fees + increase liquidity
-    // TODO: withdraw all + collect fees
 }
