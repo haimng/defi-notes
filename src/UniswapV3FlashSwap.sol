@@ -10,8 +10,14 @@ import "forge-std/console.sol";
 // WETH in        -> WETH out     -> WETH profit
 
 contract UniswapV3FlashSwap {
+    address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+    IERC20 private constant dai = IERC20(DAI);
     IERC20 private constant weth = IERC20(WETH);
+
+    ISwapRouter constant router =
+        ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     // DAI / WETH pool
     IUniswapV3Pool private constant pool =
@@ -20,7 +26,7 @@ contract UniswapV3FlashSwap {
     // uint160 internal constant MIN_SQRT_RATIO = 4295128739;
     uint160 internal constant MAX_SQRT_RATIO =
         1461446703485210103287273052203988822378723970342;
-
+    
     function flashSwap(uint wethAmountIn) external {
         bytes memory data = abi.encode(msg.sender, wethAmountIn);
 
@@ -46,9 +52,60 @@ contract UniswapV3FlashSwap {
         console.log("DAI", uint(-amount0));
         console.log("WETH", uint(amount1));
 
-        // weth.transferFrom(caller, address(pool), amount1);
-        weth.transferFrom(caller, address(pool), uint(amount1));
+        uint wethOut = swap(uint(-amount0));
+        console.log("WETH out", wethOut);
+
+        if (wethOut >= uint(amount1)) {
+            uint profit = wethOut - uint(amount1);
+            console.log("profit", profit);
+            weth.transfer(address(pool), uint(amount1));
+            weth.transfer(caller, profit);
+        } else {
+            uint loss = uint(amount1) - wethOut;
+            console.log("loss", loss);
+            weth.transferFrom(caller, address(this), loss);
+            weth.transfer(address(pool), uint(amount1));
+        }
+
+        // weth.transferFrom(caller, address(pool), uint(amount1));
     }
+
+    function swap(uint amountIn) private returns (uint wethOut) {
+        dai.approve(address(router), amountIn);
+
+        ISwapRouter.ExactInputSingleParams memory params =
+        ISwapRouter.ExactInputSingleParams({
+                tokenIn: DAI,
+                tokenOut: WETH,
+                fee: 500,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amountIn,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+
+        wethOut = router.exactInputSingle(params);
+    }
+
+}
+
+interface ISwapRouter {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    function exactInputSingle(ExactInputSingleParams calldata params)
+        external
+        payable
+        returns (uint256 amountOut);
 }
 
 interface IUniswapV3Pool {
