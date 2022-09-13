@@ -19,23 +19,38 @@ contract UniswapV3FlashSwap {
     ISwapRouter constant router =
         ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
-    // DAI / WETH pool
-    IUniswapV3Pool private constant pool =
-        IUniswapV3Pool(0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8);
-
-    // uint160 internal constant MIN_SQRT_RATIO = 4295128739;
+    uint160 internal constant MIN_SQRT_RATIO = 4295128739;
     uint160 internal constant MAX_SQRT_RATIO =
         1461446703485210103287273052203988822378723970342;
-    
-    function flashSwap(uint wethAmountIn) external {
-        bytes memory data = abi.encode(msg.sender, wethAmountIn);
 
-        pool.swap(
+    struct FlashSwapData {
+        address caller;
+        address pool0;
+        uint24 fee1;
+        address tokenIn;
+        address tokenOut;
+        uint amountIn;
+        bool zeroForOne;
+    }
+    
+    function flashSwap(address pool0, uint24 fee1, address tokenIn, address tokenOut, uint amountIn) external {
+        bool zeroForOne = tokenIn < tokenOut;
+        uint160 sqrtPriceLimitX96 = zeroForOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1;
+        bytes memory data = abi.encode(FlashSwapData({
+            caller: msg.sender,
+            pool0: pool0,
+            fee1: fee1,
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            zeroForOne: zeroForOne
+        }));
+
+        IUniswapV3Pool(pool0).swap(
             address(this),
-            // WETH -> DAI
-            false,
-            int(wethAmountIn),
-            MAX_SQRT_RATIO - 1,
+            zeroForOne,
+            int(amountIn),
+            sqrtPriceLimitX96,
             data
         );
     }
@@ -43,51 +58,59 @@ contract UniswapV3FlashSwap {
     function uniswapV3SwapCallback(
         int amount0,
         int amount1,
-        bytes calldata data
+        bytes calldata _data
     ) external {
-        require(msg.sender == address(pool), "not authorized");
+        FlashSwapData memory data = abi.decode(_data, (FlashSwapData));
 
-        (address caller, uint wethAmountIn) = abi.decode(data, (address, uint));
+        require(msg.sender == address(data.pool0), "not authorized");
 
-        console.log("DAI", uint(-amount0));
-        console.log("WETH", uint(amount1));
+        console.log("amount0", uint(amount0));
+        console.log("amount1", uint(amount1));
 
-        uint wethOut = swap(uint(-amount0));
-        console.log("WETH out", wethOut);
-
-        if (wethOut >= uint(amount1)) {
-            uint profit = wethOut - uint(amount1);
-            console.log("profit", profit);
-            weth.transfer(address(pool), uint(amount1));
-            weth.transfer(caller, profit);
+        uint amountSold;
+        if (data.zeroForOne) {
+            amountSold = uint(-amount1);
+            // _swap(token1, token0, fee1, uint(-amount1));
         } else {
-            uint loss = uint(amount1) - wethOut;
-            console.log("loss", loss);
-            weth.transferFrom(caller, address(this), loss);
-            weth.transfer(address(pool), uint(amount1));
+            amountSold = uint(-amount0);
         }
 
-        // weth.transferFrom(caller, address(pool), uint(amount1));
+        // uint buyBackAmount = _swap(tokenOut, tokenIn, fee1, amountSold);
+    
+        // // conso
+        // // console.log("WETH out", wethOut);
+
+        // if (buyBackAmount >= amountSold) {
+        //     uint profit = buyBackAmount - amountSold;
+        //     console.log("profit", profit);
+        //     IERC20(tokenIn).transfer(address(pool0), amountSold);
+        //     IERC20(tokenIn).transfer(caller, profit);
+        // } else {
+        //     uint loss = amountSold - buyBackAmount;
+        //     console.log("loss", loss);
+        //     IERC20(tokenIn).transferFrom(caller, address(this), loss);
+        //     IERC20(tokenIn).transfer(address(pool0), amountSold);
+        // }
+
+        IERC20(data.tokenIn).transferFrom(data.caller, address(data.pool0), uint(data.amountIn));
     }
 
-    function swap(uint amountIn) private returns (uint wethOut) {
-        dai.approve(address(router), amountIn);
+    function _swap(address tokenIn, address tokenOut, uint24 fee, uint amountIn) private returns (uint amountOut) {
+        IERC20(tokenIn).approve(address(router), amountIn);
 
-        ISwapRouter.ExactInputSingleParams memory params =
-        ISwapRouter.ExactInputSingleParams({
-                tokenIn: DAI,
-                tokenOut: WETH,
-                fee: 500,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amountIn,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            });
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            fee: fee,
+            recipient: address(this),
+            deadline: block.timestamp,
+            amountIn: amountIn,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
 
-        wethOut = router.exactInputSingle(params);
+        amountOut = router.exactInputSingle(params);
     }
-
 }
 
 interface ISwapRouter {
