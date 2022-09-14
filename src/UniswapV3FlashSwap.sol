@@ -67,32 +67,24 @@ contract UniswapV3FlashSwap {
         console.log("amount0", uint(amount0));
         console.log("amount1", uint(amount1));
 
-        uint amountSold;
+        uint amountOut;
         if (data.zeroForOne) {
-            amountSold = uint(-amount1);
-            // _swap(token1, token0, fee1, uint(-amount1));
+            amountOut = uint(-amount1);
         } else {
-            amountSold = uint(-amount0);
+            amountOut = uint(-amount0);
         }
 
-        // uint buyBackAmount = _swap(tokenOut, tokenIn, fee1, amountSold);
+        uint buyBackAmount = _swap(data.tokenOut, data.tokenIn, data.fee1, amountOut);
     
-        // // conso
-        // // console.log("WETH out", wethOut);
-
-        // if (buyBackAmount >= amountSold) {
-        //     uint profit = buyBackAmount - amountSold;
-        //     console.log("profit", profit);
-        //     IERC20(tokenIn).transfer(address(pool0), amountSold);
-        //     IERC20(tokenIn).transfer(caller, profit);
-        // } else {
-        //     uint loss = amountSold - buyBackAmount;
-        //     console.log("loss", loss);
-        //     IERC20(tokenIn).transferFrom(caller, address(this), loss);
-        //     IERC20(tokenIn).transfer(address(pool0), amountSold);
-        // }
-
-        IERC20(data.tokenIn).transferFrom(data.caller, address(data.pool0), uint(data.amountIn));
+        if (buyBackAmount >= data.amountIn) {
+            uint profit = buyBackAmount - data.amountIn;
+            IERC20(data.tokenIn).transfer(address(data.pool0), data.amountIn);
+            IERC20(data.tokenIn).transfer(data.caller, profit);
+        } else {
+            uint loss = data.amountIn - buyBackAmount;
+            IERC20(data.tokenIn).transferFrom(data.caller, address(this), loss);
+            IERC20(data.tokenIn).transfer(address(data.pool0), data.amountIn);
+        }
     }
 
     function _swap(address tokenIn, address tokenOut, uint24 fee, uint amountIn) private returns (uint amountOut) {
