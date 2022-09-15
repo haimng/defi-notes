@@ -3,12 +3,6 @@ pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
 
-// Buy WETH low -> Sell WETH high
-// DAI in       -> DAI out        -> DAI profit
-
-// Sell WETH high -> Buy WETH low
-// WETH in        -> WETH out     -> WETH profit
-
 contract UniswapV3FlashSwap {
     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -23,6 +17,9 @@ contract UniswapV3FlashSwap {
     uint160 internal constant MAX_SQRT_RATIO =
         1461446703485210103287273052203988822378723970342;
  
+    // Example WETH/USDC
+    // Sell WETH high      -> Buy WETH low        -> WETH profit
+    // WETH in -> USDC out -> USDC in -> WETH out -> WETH profit
     function flashSwap(address pool0, uint24 fee1, address tokenIn, address tokenOut, uint amountIn) external {
         bool zeroForOne = tokenIn < tokenOut;
         uint160 sqrtPriceLimitX96 = zeroForOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1;
