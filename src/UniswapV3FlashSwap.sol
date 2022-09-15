@@ -22,29 +22,19 @@ contract UniswapV3FlashSwap {
     uint160 internal constant MIN_SQRT_RATIO = 4295128739;
     uint160 internal constant MAX_SQRT_RATIO =
         1461446703485210103287273052203988822378723970342;
-
-    struct FlashSwapData {
-        address caller;
-        address pool0;
-        uint24 fee1;
-        address tokenIn;
-        address tokenOut;
-        uint amountIn;
-        bool zeroForOne;
-    }
-    
+ 
     function flashSwap(address pool0, uint24 fee1, address tokenIn, address tokenOut, uint amountIn) external {
         bool zeroForOne = tokenIn < tokenOut;
         uint160 sqrtPriceLimitX96 = zeroForOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1;
-        bytes memory data = abi.encode(FlashSwapData({
-            caller: msg.sender,
-            pool0: pool0,
-            fee1: fee1,
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            amountIn: amountIn,
-            zeroForOne: zeroForOne
-        }));
+        bytes memory data = abi.encode(
+            msg.sender,
+            pool0,
+            fee1,
+            tokenIn,
+            tokenOut,
+            amountIn,
+            zeroForOne
+        );
 
         IUniswapV3Pool(pool0).swap(
             address(this),
@@ -58,32 +48,37 @@ contract UniswapV3FlashSwap {
     function uniswapV3SwapCallback(
         int amount0,
         int amount1,
-        bytes calldata _data
+        bytes calldata data
     ) external {
-        FlashSwapData memory data = abi.decode(_data, (FlashSwapData));
+        (
+            address caller,
+            address pool0,
+            uint24 fee1,
+            address tokenIn,
+            address tokenOut,
+            uint amountIn,
+            bool zeroForOne
+        ) = abi.decode(data, (address, address, uint24, address, address, uint, bool));
 
-        require(msg.sender == address(data.pool0), "not authorized");
-
-        console.log("amount0", uint(amount0));
-        console.log("amount1", uint(amount1));
+        require(msg.sender == address(pool0), "not authorized");
 
         uint amountOut;
-        if (data.zeroForOne) {
+        if (zeroForOne) {
             amountOut = uint(-amount1);
         } else {
             amountOut = uint(-amount0);
         }
 
-        uint buyBackAmount = _swap(data.tokenOut, data.tokenIn, data.fee1, amountOut);
+        uint buyBackAmount = _swap(tokenOut, tokenIn, fee1, amountOut);
     
-        if (buyBackAmount >= data.amountIn) {
-            uint profit = buyBackAmount - data.amountIn;
-            IERC20(data.tokenIn).transfer(address(data.pool0), data.amountIn);
-            IERC20(data.tokenIn).transfer(data.caller, profit);
+        if (buyBackAmount >= amountIn) {
+            uint profit = buyBackAmount - amountIn;
+            IERC20(tokenIn).transfer(address(pool0), amountIn);
+            IERC20(tokenIn).transfer(caller, profit);
         } else {
-            uint loss = data.amountIn - buyBackAmount;
-            IERC20(data.tokenIn).transferFrom(data.caller, address(this), loss);
-            IERC20(data.tokenIn).transfer(address(data.pool0), data.amountIn);
+            uint loss = amountIn - buyBackAmount;
+            IERC20(tokenIn).transferFrom(caller, address(this), loss);
+            IERC20(tokenIn).transfer(address(pool0), amountIn);
         }
     }
 
